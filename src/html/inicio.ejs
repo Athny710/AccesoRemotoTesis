@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="/css/normalize.css">
+    <link rel="stylesheet" type="text/css" href="/css/estilos.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="/js/canva.js"></script>
+    
+    <title>Página Principal</title>
+</head>
+<body>
+    <main>
+        <div class="topbar">
+            <div class="topbar-lugar">
+                <a href="/inicio"><img src="/img/iconoteleco.svg" alt=""></a>
+            </div>
+            <div class="topbar-perfil">
+                <ul>
+                    <li class="topbar-divisor item"></li>
+                    <li class="topbar-p item"><a href="/cerrarSesion">Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="contenido">
+            <div class="contenedor-elementos">
+                <div class="contenedor-tarjetas">
+                    <div class="tarjeta">
+                        <img src="/img/calendario.png" alt="">
+                        <div class="tarjeta-info">
+                            <h3>RESERVAR <br> EQUIPOS</h3>
+                            <p>Reserva equipos del laboratorio según su disponibilidad por un máximo de 4 hrs.</p>
+                            <a href="/reserva"><button class="form_button">IR</button></a>
+                        </div>
+                    </div>
+                    <div class="tarjeta">
+                        <img src="/img/laboratorio.png" alt="">
+                        <div class="tarjeta-info">
+                            <h3>INGRESAR AL <br> LABORATORIO</h3>
+                            <p>Ingresa al laboratorio para poder usar los equipos que has reservado.</p>
+                            <a href="/validacionReserva"><button class="form_button">IR</button></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="error-msg2"><%= mensaje %></div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

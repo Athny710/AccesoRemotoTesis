@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="/css/normalize.css">
+    <link rel="stylesheet" type="text/css" href="/css/estilos.css">
+    <title>Laboratorio</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.0/moment.min.js"></script>
+</head>
+<body>
+    <div class="contenedor-main">
+        <div class="topbar">
+            <div class="topbar-lugar">
+                <a href="/inicio"><img src="/img/iconoteleco.svg" alt=""></a>
+            </div>
+            <div class="topbar-perfil">
+                <ul>
+                    <li class="topbar-divisor item"></li>
+                    <li class="topbar-p item"><a href="/cerrarSesion">Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="contenedor">
+            <div class="header"><h3>Laboratorio</h3></div>
+            <input type="hidden" id="horaFin" value=<%=horaFin%>>
+            <div class="topologia">
+                <div class="filaSwTop">
+                    <input type="image" class="swTop" src="/img/equipos/SwTopologico.svg" id="swTop">
+                </div>
+                <div class="filaRouters1">
+                    <input type="image" class="router" src="/img/equipos/R1.svg" id="r1">
+                    <input type="image" class="router" src="/img/equipos/R3.svg" id="r3">
+                    <input type="image" class="router" src="/img/equipos/R6.svg" id="r6">
+                    <input type="image" class="router" src="/img/equipos/R8.svg" id="r8">
+                </div>
+                <div class="filaRouters2">
+                    <input type="image" class="router" src="/img/equipos/R2.svg" id="r2">
+                    <input type="image" class="router" src="/img/equipos/R4.svg" id="r4">
+                    <input type="image" class="router" src="/img/equipos/R5.svg" id="r5">
+                    <input type="image" class="router" src="/img/equipos/R7.svg" id="r7">
+                </div>
+                <div class="filaSwitches">
+                    <input type="image" class="switch" src="/img/equipos/SW1.svg" id="sw1">
+                    <input type="image" class="switch" src="/img/equipos/SW2.svg" id="sw2">
+                    <input type="image" class="switch" src="/img/equipos/SW3.svg" id="sw3">
+                    <input type="image" class="switch" src="/img/equipos/SW4.svg" id="sw4">
+                    <input type="image" class="switch" src="/img/equipos/SW5.svg" id="sw5">
+                    <input type="image" class="switch" src="/img/equipos/SW6.svg" id="sw6">
+                    <input type="image" class="switch" src="/img/equipos/SW7.svg" id="sw7">
+                    <input type="image" class="switch" src="/img/equipos/SW8.svg" id="sw8">
+                </div>
+                <div class="filaPcs">
+                    <input type="image" class="pc" src="/img/equipos/Pc1.svg" id="pc1">
+                    <input type="image" class="pc" src="/img/equipos/Pc2.svg" id="pc2">
+                    <input type="image" class="pc" src="/img/equipos/Pc3.svg" id="pc3">
+                    <input type="image" class="pc" src="/img/equipos/Pc4.svg" id="pc4">
+                    <input type="image" class="pc" src="/img/equipos/Pc5.svg" id="pc5">
+                    <input type="image" class="pc" src="/img/equipos/Pc6.svg" id="pc6">
+                    <input type="image" class="pc" src="/img/equipos/Pc7.svg" id="pc7">
+                    <input type="image" class="pc" src="/img/equipos/Pc8.svg" id="pc8">
+                </div>
+            </div>
+        </div>
+        <div class="contenedorGen">
+            <div class="contenedorDark">
+                <div class="headerWhite"><h3>Información</h3></div>
+                <div class="ayuda">
+                    <p>Haciendo click en los iconos podrás acceder a la consola de los equipos o escritorios remotos.
+                    </p>
+                    <p>Solo podrá acceder a los equipos que ha reservado previamente.</p>
+                    <p>Para armar la topología deseada deberá configurar los puertos del switch topológico en una Vlan determinada.</p>
+                </div>
+            </div>
+            <div class="contenedorDark2">
+                <div class="header"><h3>Configuraciones</h3></div>
+                <div class="conf">
+                    <div class="conf-group">
+                        <div class="grupo1">
+                            <label for="router">Router:</label>
+                            <select class="opciones" name="router" id="router">
+                                <option value="r1">Router 1</option>
+                                <option value="r2">Router 2</option>
+                                <option value="r3">Router 3</option>
+                                <option value="r4">Router 4</option>
+                                <option value="r5">Router 5</option>
+                                <option value="r6">Router 6</option>
+                                <option value="r7">Router 7</option>
+                                <option value="r8">Router 8</option>
+                            </select>
+                        </div>
+                        <div class="grupo2">
+                            <button class="form_button" id="resetBtnR">Reset</button>
+                            <button class="form_button" id="reloadBtnR">Reload</button> 
+                        </div>
+                        
+                    </div>
+                    <div class="conf-group">
+                        <div class="grupo1">
+                            <label for="switch">Switch:</label>
+                            <select class="opciones" name="switch" id="switch">
+                                <option value="swTopologico">Topológico</option>
+                                <option value="sw1" selected>Switch 1</option>
+                                <option value="sw2">Switch 2</option>
+                                <option value="sw3">Switch 3</option>
+                                <option value="sw4">Switch 4</option>
+                                <option value="sw5">Switch 5</option>
+                                <option value="sw6">Switch 6</option>
+                                <option value="sw7">Switch 7</option>
+                                <option value="sw8">Switch 8</option>
+                            </select>
+                        </div>
+                        <div class="grupo2">
+                            <button class="form_button" id="resetBtnS">Reset</button>
+                            <button class="form_button" id="reloadBtnS">Reload</button>        
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>        
+    </div>
+    <script  src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="/js/socket.js"></script>     
+</body>
+</html>

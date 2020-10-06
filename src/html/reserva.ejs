@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="/css/normalize.css">
+    <link rel="stylesheet" type="text/css" href="/css/estilos.css">
+    <title>Reserva</title>
+</head>
+<body>
+    <div class="contenedor-main">
+        <div class="topbar">
+            <div class="topbar-lugar">
+                <a href="/inicio"><img src="/img/iconoteleco.svg" alt=""></a>
+            </div>
+            <div class="topbar-perfil">
+                <ul>
+                    <li class="topbar-divisor item"></li>
+                    <li class="topbar-p item"><a href="/cerrarSesion">Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="contenedorGen">
+            <div class="contenedor-calendario">
+                <div class="header"><h3>Calendario</h3></div>
+                <div class="calendario">
+                    <iframe class="google-cal" src="https://calendar.google.com/calendar/embed?height=450&amp;wkst=2&amp;bgcolor=%23ffffff&amp;ctz=America%2FLima&amp;src=bGFidGVsZWNvbTMwNUBnbWFpbC5jb20&amp;color=%23039BE5&amp;showTitle=0&amp;showNav=0&amp;showTz=0&amp;showCalendars=0&amp;showPrint=0&amp;showDate=0&amp;showTabs=0&amp;mode=WEEK" style="border-width:0"  height="450" frameborder="0" scrolling="no"></iframe>
+                </div>
+            </div>
+            <div class="cont-formulario" >
+                <div class="header"><h3>Reserva</h3></div>
+                <div class="error-msg"><%= mensaje %></div>
+                <div class="succesfull-msg"><%= mensajeSucc %></div>
+                <div class="formulario">
+                    <form action="/reservar" method="get">
+                        <div class="form-group">
+                            <label for="dia">Día:</label>
+                            <input class="inputForm" type="date" id="dia" name="dia">
+                        </div>
+                        <div class="form-group">
+                            <label for="horaInicio">Hora Inicio:</label>
+                            <input class="inputForm" type="time" id="horaInicio" name="horaInicio">
+                        </div>
+                        <div class="form-group">
+                            <label for="horaFin">Hora Fin:</label>
+                            <input class="inputForm" type="time" id="horaFin" name="horaFin">
+                        </div>
+                        <div class="form-group2">
+                            <label for="colaborador">Colarboradores:</label>
+                            <textarea class="colaborador" name="colaborador" id="colaborador" cols="20" rows="7" placeholder="------(Opcional)------ Presione ENTER despues de ingresar cada correo. email@email.com email@email.com email@email.com "></textarea>
+                        </div>
+                        <div class="form-button">
+                            <button class="form_button" type="submit" id="reservar">Reservar</button>
+                        </div>   
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="/js/calendario.js"></script>
+</body>
+</html>

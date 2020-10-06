@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="/css/normalize.css">
+    <link rel="stylesheet" type="text/css" href="/css/estilos.css">
+    <title>Iniciar Sesión</title>
+</head>
+<body>
+    <div class="contenedor-log1">
+        <div class="contenedor-log2 shadowBox">
+            <div class="contenedor-img">
+                <div class="contenedor-log_img">
+                    <img src="/img/logofinal-teleco.svg">
+                </div>
+            </div>
+            <form class="form" id="signin">
+                <div class="form_section">
+                    <input type="email" class="form_input" id="email" placeholder="Usuario">
+                </div>
+                <div class="form_section" id="input-botton">
+                    <input type="password" class="form_input" id="pass" placeholder="Contraseña">
+                </div>
+                <div class="error-msg" id="mensaje" style="display: none;">Datos inválidos</div> 
+                <div class="form_section" id="boton">
+                    <button type="submit" class="form_button">Ingresar</button>
+                </div>
+            </form>
+            <div class="forgot-pass">
+                <span>¿Olvidaste tu contraseña?<a href="sw1">Click Aquí</a></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- FIREBASE SCRIPT PRINCIPAL -->
+    <script src="https://www.gstatic.com/firebasejs/7.21.0/firebase-app.js" defer></script> 
+    <!-- FIREBASE SERVICIOS -->
+    <script src="https://www.gstatic.com/firebasejs/7.21.0/firebase-auth.js" defer></script>
+    <!-- COOKIE SESSION -->
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js" defer></script>
+    <script>
+        window.addEventListener("DOMContentLoaded", () => {
+            var firebaseConfig = {
+                apiKey: "AIzaSyBiD2m9EgtHsMT4ow02wTnmawf9EayBiQw",
+                authDomain: "laboratorio-v305.firebaseapp.com",
+                databaseURL: "https://laboratorio-v305.firebaseio.com",
+                projectId: "laboratorio-v305",
+                storageBucket: "laboratorio-v305.appspot.com",
+                messagingSenderId: "594503945964",
+                appId: "1:594503945964:web:b1bf7f238c6c3cae3d9fc9"
+            };
+        // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+            
+        });
+    </script>
+
+    <!-- JAVASCRIPT PRESONALIZADO -->
+    <script type="text/javascript" src="/js/autenticacion.js"></script>
+</body>
+</html>
