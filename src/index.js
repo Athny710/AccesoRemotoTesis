@@ -44,21 +44,18 @@ io.on('connection', (socket) => {
         if(process===undefined){
             console.log('No hay procesos');
         }else{
-            console.log('Se cerro la consola del equipo');
             kill(process.pid);
         }
         
     });
 
     socket.on('swTop', () => {
-        console.log('Deberia aparecer la consola');
         var funcion = 'swTopologico';
         process = spawn('python', [path.join(__dirname, '/script/conexiones.py'), funcion], {shell: true, detached: true});
         
     });
     socket.on('resetRouter',(data) => {
-        console.log('Deberia haber terminado el proceso!!!!');
-        kill(process.pid);
+        console.log(data.router);
     });
     socket.on('reloadRouter',(data) => {
         console.log(data.router);

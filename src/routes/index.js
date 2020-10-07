@@ -82,7 +82,6 @@ route.get('/reservar', (req,res1) => {
             res1.redirect('/reserva');
         }
     };
-    console.log(colaboradores);
     const event = {
         summary: usuarioLogEmail,
         start:{
@@ -99,12 +98,11 @@ route.get('/reservar', (req,res1) => {
     if(dia<fechaActual){
         mensaje='Fecha ingresada no válida';
         res1.redirect('/reserva');
-        console.log('Fecha ingresada no válida');
     }else if(dia=== fechaActual && (horaInicio>=horaFin || horaInicio<horaActual)){ 
-        console.log('Hora ingresada no válida');
+        mensaje='Fecha ingresada no válida';
         res1.redirect('/reserva');
     }else if(dia >fechaActual && horaInicio>= horaFin){
-        console.log('Hora ingresada no válida');
+        mensaje='Fecha ingresada no válida';
         res1.redirect('/reserva');
     }
     else{
@@ -123,7 +121,6 @@ route.get('/reservar', (req,res1) => {
                 },(err, res2) => {
                     if(err) return console.log('Free busy query error: ', err);
                     const eventsArr = res2.data.calendars.primary.busy;
-                    console.log('Tamañp de array de eventos:' + eventsArr.length);
                     if(eventsArr.length == 0){
                         return calendario.events.insert({calendarId:'primary', resource: event},
                             err => {
@@ -175,11 +172,6 @@ route.get('/validacionReserva', (req, resp) => {
                             const horaInicio = moment(start).format("HH:mm:ss");
                             horaFin = moment(end).format("HH:mm:ss");
                             horaActual = moment().format("HH:mm:ss");
-                            console.log(fechaActual);
-                            console.log(fechaInicio);
-                            console.log(horaActual);
-                            console.log(horaInicio);
-                            console.log(horaFin);
                             if(fechaInicio===fechaActual && horaActual>=horaInicio && horaActual<horaFin){
                                 for(var i=0; i<event.attendees.length; i++){
                                     if(usuarioLogEmail===event.attendees[i].email){
@@ -192,14 +184,12 @@ route.get('/validacionReserva', (req, resp) => {
                                     resp.redirect('/inicio');
                                 }
                             }else{
-                                mensaje='Usted no cuenta con reservacion en este momento(2)'
-                                console.log(mensaje);
+                                mensaje='Usted no cuenta con reservacion en este momento(2)';
                                 resp.redirect('/inicio');
                             }        
                         });
                     } else {
-                        mensaje='Usted no cuenta con reservacion en este momento(3)'
-                        console.log(mensaje);
+                        mensaje='Usted no cuenta con reservacion en este momento(3)';
                         resp.redirect('/inicio');
                     }
             });
