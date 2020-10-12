@@ -15,20 +15,20 @@
                     <img src="/img/logofinal-teleco.svg">
                 </div>
             </div>
-            <form class="form" id="signin">
-                <div class="form_section">
-                    <input type="email" class="form_input" id="email" placeholder="Usuario">
+            <form class="form" id="resetPassForm">
+                <div class="form_section2">
+                    <p>Se enviará un correo para que reestablezca su contraseña</p>
                 </div>
-                <div class="form_section" id="input-botton">
-                    <input type="password" class="form_input" id="pass" placeholder="Contraseña">
+                <div class="form_section2">
+                    <input type="email" class="form_input" id="emailRecuperacion" placeholder="Correo">
+                </div> 
+                <div class="form_section2" id="boton">
+                    <button type="submit" class="main-button">Enviar</button>
                 </div>
-                <div class="error-msg" id="mensaje" style="display: none;">Datos inválidos</div> 
-                <div class="form_section" id="boton">
-                    <button type="submit" class="main-button">Ingresar</button>
-                </div>
+                
             </form>
             <div class="forgot-pass">
-                <span>¿Olvidaste tu contraseña?<a href="/recuperarPass">Click Aquí</a></span>
+                <span>Inicia Sesión<a href="/">Click Aquí</a></span>
             </div>
         </div>
     </div>
@@ -59,6 +59,6 @@
     </script>
 
     <!-- JAVASCRIPT PRESONALIZADO -->
-    <script type="text/javascript" src="/js/autenticacion.js"></script>
+    <script type="text/javascript" src="/js/resetPass.js"></script>
 </body>
 </html>

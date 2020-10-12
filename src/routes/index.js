@@ -7,7 +7,7 @@ const { firebase } = require('googleapis/build/src/apis/firebase');
 const { stringify } = require('querystring');
 const serviceAccount = require(path.join(__dirname, "../../serviceAccountKey.json"));
 const calendario = require(path.join(__dirname, '../public/js/calendario'));
-var mensaje, mensajeSucc, horaFin, tiempoReservado=0, rol;
+var mensaje, mensajeSucc, horaFin, tiempoReservado, rol;
 var accesoLab = 0;
 
 admin.initializeApp({
@@ -21,7 +21,7 @@ route.all("*", (req, res, next) => {
 });
 
 route.get('/', (req, res) => {
-    res.render(path.join(__dirname, '../html/index.html'));
+    res.render(path.join(__dirname, '../html/index.ejs'));
 });
 
 route.get('/inicio', (req, res) => {
@@ -39,6 +39,7 @@ route.get('/inicio', (req, res) => {
 });
 
 route.get('/reserva', (req, res) => {
+    tiempoReservado = 0;
     const now = new Date();
     if(now.getDay() == 0){
         now.setDate(((now.getDate()-7)+1));
@@ -106,7 +107,7 @@ route.get('/reservar', (req,res1) => {
     const a = moment(moment(inicio).format('HH:mm:ss'), 'HH:mm:ss');
     const b = moment(moment(fin).format('HH:mm:ss'), 'HH:mm:ss');
     const duracion = parseInt(b.diff(a, 'seconds'));
-    
+    console.log('duracion: '+duracion);
     if(lista === ''){
         colaboradores = [{email: usuarioLogEmail}];
     }else{
@@ -287,8 +288,8 @@ route.get("/cerrarSesion", (req, res) => {
     res.redirect("/");
 })
 
-route.get("/recuperarPass", (req, res) => {
-    res.render(path.join(__dirname, '../html/password.html'));
+route.get("/reestablecer", (req, res) => {
+    res.render(path.join(__dirname, '../html/restablecer.ejs'));
 })
 
 module.exports = route;
