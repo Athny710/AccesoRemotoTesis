@@ -6,16 +6,14 @@ const admin = require("firebase-admin");
 const { firebase } = require('googleapis/build/src/apis/firebase');
 const { stringify } = require('querystring');
 const serviceAccount = require(path.join(__dirname, "../../serviceAccountKey.json"));
-var horaActual;
-var mensaje, mensajeSucc, horaFin;
+const calendario = require(path.join(__dirname, '../public/js/calendario'));
+var mensaje, mensajeSucc, horaFin, tiempoReservado=0, rol;
 var accesoLab = 0;
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://laboratorio-v305.firebaseio.com"
 });
-
-
 
 route.all("*", (req, res, next) => {
     res.cookie("XSRF-TOKEN", req.csrfToken());
@@ -41,6 +39,16 @@ route.get('/inicio', (req, res) => {
 });
 
 route.get('/reserva', (req, res) => {
+    const now = new Date();
+    if(now.getDay() == 0){
+        now.setDate(((now.getDate()-7)+1));
+    }else{
+        now.setDate(((now.getDate()-now.getDay())+1));
+    }
+    const i = new Date(now);
+    const f = new Date(now.setDate(now.getDate()+6));
+    const inicio = moment(moment(i).startOf('day')).format();
+    fin = moment(moment(f).endOf('day')).format();
     const sessionCookie = req.cookies.session || "";
     admin
         .auth()
@@ -53,21 +61,52 @@ route.get('/reserva', (req, res) => {
         .catch((error) => {
             res.redirect("/");
         });
+        calendario.events.list({
+            calendarId: 'primary',
+            timeMin: inicio,
+            timeMax: fin,
+            maxResults: 100,
+            singleEvents: true,
+            orderBy: 'startTime',
+            }, (err, res) => {
+                if (err) return console.log('The API returned an error: ' + err);
+                const events = res.data.items;
+                console.log('Reservas durante la semana: '+events.length);
+                for(var i=0; i<events.length; i++){
+                    for(var j=0; j<events[i].attendees.length; j++){
+                        if(events[i].attendees[j].email === usuarioLogEmail){
+                            const a = moment(moment(events[i].start.dateTime).format('HH:mm:ss'), 'HH:mm:ss');
+                            const b = moment(moment(events[i].end.dateTime).format('HH:mm:ss'), 'HH:mm:ss');
+                            tiempoReservado = tiempoReservado+ parseInt(b.diff(a, 'seconds'));                            
+                        };
+                    };
+                };
+        });    
+        
 });
 
 
 route.get('/reservar', (req,res1) => {
-    const calendario = require(path.join(__dirname, '../public/js/calendario'));
+    const now = new Date();
+    if(now.getDay() == 0){
+        now.setDate(((now.getDate()-7)+1));
+    }else{
+        now.setDate(((now.getDate()-now.getDay())+1));
+    }
+    const f = new Date(now.setDate(now.getDate()+6));
+    const finSemana = moment(moment(f).endOf('day')).format('YYYY-MM-DD');
     const fechaActual = moment().format("YYYY-MM-DD");
-    
     const lista = req.query.colaborador;
-    const dia = req.query.dia;
-    const horaInicio = req.query.horaInicio;
-    const horaFin = req.query.horaFin;
-    const dInicio = dia+'T'+horaInicio+':00Z';
-    const dFin = dia+'T'+horaFin+':00Z';
-    const inicio = moment(dInicio, "YYYY-MM-DD HH:mm");
-    const fin = moment(dFin, "YYYY-MM-DD HH:mm");
+    const dia = moment(req.query.dia).format('YYYY-MM-DD');
+    const horaInicio = moment(req.query.horaInicio, 'HH:mm');
+    const horaFin = moment(req.query.horaFin, 'HH:mm');
+    const horaActual = moment(moment().format('HH:mm'), 'HH:mm');
+    const inicio = moment(dia+'T'+ req.query.horaInicio +':00').format();
+    const fin = moment(dia+'T'+ req.query.horaFin + ':00').format();
+    const a = moment(moment(inicio).format('HH:mm:ss'), 'HH:mm:ss');
+    const b = moment(moment(fin).format('HH:mm:ss'), 'HH:mm:ss');
+    const duracion = parseInt(b.diff(a, 'seconds'));
+    
     if(lista === ''){
         colaboradores = [{email: usuarioLogEmail}];
     }else{
@@ -96,13 +135,19 @@ route.get('/reservar', (req,res1) => {
     };
     const sessionCookie = req.cookies.session || "";
     if(dia<fechaActual){
-        mensaje='Fecha ingresada no válida';
+        mensaje='Fecha ingresada no válida(1)';
+        res1.redirect('/reserva');
+    }else if(dia>finSemana){
+        mensaje='Solo puede reservar en esta semana';
         res1.redirect('/reserva');
     }else if(dia=== fechaActual && (horaInicio>=horaFin || horaInicio<horaActual)){ 
-        mensaje='Fecha ingresada no válida';
+        mensaje='Fecha ingresada no válida(2)';
         res1.redirect('/reserva');
     }else if(dia >fechaActual && horaInicio>= horaFin){
-        mensaje='Fecha ingresada no válida';
+        mensaje='Fecha ingresada no válida(3)';
+        res1.redirect('/reserva');
+    }else if(rol==='alumno' && (tiempoReservado>=14000 || duracion>14000)){
+        mensaje = 'Máximo 4hrs semanales';
         res1.redirect('/reserva');
     }
     else{
@@ -110,7 +155,6 @@ route.get('/reservar', (req,res1) => {
             .auth()
             .verifySessionCookie(sessionCookie, true)
             .then(() => {
-                
                 calendario.freebusy.query({
                     resource:{
                         timeMin: inicio,
@@ -147,7 +191,6 @@ route.get('/reservar', (req,res1) => {
 })
 
 route.get('/validacionReserva', (req, resp) => {
-    const calendario = require(path.join(__dirname, '../public/js/calendario'));
     const sessionCookie = req.cookies.session || "";
     admin
         .auth()
@@ -171,7 +214,7 @@ route.get('/validacionReserva', (req, resp) => {
                             const fechaActual = moment().format(format);
                             const horaInicio = moment(start).format("HH:mm:ss");
                             horaFin = moment(end).format("HH:mm:ss");
-                            horaActual = moment().format("HH:mm:ss");
+                            const horaActual = moment().format("HH:mm:ss");
                             if(fechaInicio===fechaActual && horaActual>=horaInicio && horaActual<horaFin){
                                 for(var i=0; i<event.attendees.length; i++){
                                     if(usuarioLogEmail===event.attendees[i].email){
@@ -223,6 +266,7 @@ route.post("/sessionLogin", (req, res) => {
     const idToken = req.body. idToken.toString();
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
     usuarioLogEmail= req.body.email.toString();
+    rol = req.body.rol.toString();
     admin
         .auth()
         .createSessionCookie(idToken, {expiresIn})
@@ -243,11 +287,8 @@ route.get("/cerrarSesion", (req, res) => {
     res.redirect("/");
 })
 
-
-route.get('/laboratorio/sw1', (req, res) => {
-    const spawn = require('child_process').spawn;
-    const process = spawn('python', [path.join(__dirname, '../script/switch1.py')], {shell: true, detached: true});
-    process.unref();
-    res.render(path.join(__dirname, '../html/laboratorio.html'));
+route.get("/recuperarPass", (req, res) => {
+    res.render(path.join(__dirname, '../html/password.html'));
 })
+
 module.exports = route;

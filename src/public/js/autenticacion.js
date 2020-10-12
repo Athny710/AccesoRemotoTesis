@@ -1,12 +1,26 @@
 
 const signinForm = document.querySelector('#signin');
-
+const pruebabtn = document.querySelector('#prueba');
+var rol;
 
 
 signinForm.addEventListener('submit',(e) => {
     e.preventDefault();
     const email= document.querySelector('#email').value;
     const pass = document.querySelector('#pass').value;
+    
+    firebase.firestore().collection('usuarios').where('email', '==', 'a20145976@pucp.pe').get().then(snapshot => {
+        if(snapshot.empty){
+            console.log('Usuario no encontrado');
+            return;
+        }
+        snapshot.forEach(doc => {
+            rol = doc.data().rol;
+            alert(rol);
+        });
+    });
+    
+
     firebase.auth()
         .signInWithEmailAndPassword(email, pass)
         .then(({user}) => {
@@ -19,7 +33,7 @@ signinForm.addEventListener('submit',(e) => {
                         "Content-Type": "application/json",
                         "CSRF-Token": Cookies.get("XSRF-TOKEN"),
                     },
-                    body: JSON.stringify({idToken, email}),    
+                    body: JSON.stringify({idToken, email, rol}),    
                 });
             });
         })
