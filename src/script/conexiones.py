@@ -1,8 +1,88 @@
 import telnetlib
 import sys
 
-def swTopologico():
-    switch1_IP = "192.168.1.7"
+def swTop():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def router1():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def router2():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def router3():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def router4():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def router5():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def router6():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def router7():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def router8():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def switch1():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def switch2():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def switch3():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def switch4():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def switch5():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def switch6():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def switch7():
+    switch1_IP = "192.168.1.100"
+    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection.interact()
+
+def switch8():
+    switch1_IP = "192.168.1.100"
     connection = telnetlib.Telnet(switch1_IP, 5000)
     connection.interact()
 

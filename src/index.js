@@ -1,58 +1,49 @@
 const express  = require('express');
 const app = express();
 const path = require('path');
-const kill = require('tree-kill');
-const { allowedNodeEnvironmentFlags } = require('process');
-const socketIO = require('socket.io');
 const cookieParser = require("cookie-parser");
-const csrf = require("csurf");
 const bodyParser = require("body-parser");
+const csrf = require("csurf");
+const kill = require('tree-kill');
 const csrfMiddleware = csrf({cookie: true}); 
 const spawn = require('child_process').spawn;
-var process;
+const socketIO = require('socket.io');
+var  swTop, r1, r2, r3, r4, r5, r6, r7, r8, sw1,sw2, sw3, sw4, sw5, sw6, sw7, sw8;
+const equipos = [swTop, r1, r2, r3, r4, r5, r6, r7, r8, sw1, sw2, sw3, sw4, sw5, sw6, sw7, sw8];
 
-//static files
-app.set('html', path.join(__dirname, 'html'))
-app.set('html', path.join(__dirname, 'script'))
+//-------Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// setings
+//--------Setings
 app.set('port', 8080);
 app.engine("html", require('ejs').renderFile);
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(csrfMiddleware);
 
-// listening the server
+//-------Listening server
 const server = app.listen(app.get('port'), () =>{
     console.log('Server on port', app.get('port'))
 })
 
-// routes 
+//-------Routes 
 app.use(require('./routes/index'));
 
-// socket para la conexion a equipos
+//-------Conexion a equipos 
 const io = socketIO(server);
-var listaProcesos = [];
-listaProcesos.length = 25;
 
 io.on('connection', (socket) => {
-    
-
     socket.on('actualizarReserva', () => {
-        
-        if(process===undefined){
-            console.log('No hay procesos');
-        }else{
-            kill(process.pid);
+        for(var i=0; i<equipos.length; i++){
+            if(equipos[i]==undefined){
+                console.log('No hay procesos.');
+            }else{
+                kill(equipo[i].pid);
+            }
         }
-        
     });
-
-    socket.on('swTop', () => {
-        var funcion = 'swTopologico';
-        process = spawn('python', [path.join(__dirname, '/script/conexiones.py'), funcion], {shell: true, detached: true});
-        
+    socket.on('acceder', (data) => {
+        equipos[data.index] = spawn('python', [path.join(__dirname, '/script/conexiones.py'), data.name], {shell: true, detached: true});
     });
     socket.on('resetRouter',(data) => {
         console.log(data.router);

@@ -8,6 +8,9 @@ signinForm.addEventListener('submit',(e) => {
     console.log(email);
     firebase.firestore().collection('usuarios').where('email', '==', email).get().then(snapshot => {
         if(snapshot.empty){
+            document.querySelector('#input-botton').style.display='25px 20px 5px 20x';
+            document.querySelector('#boton').style.margin='0 20px 12px 20px';
+            document.querySelector('#mensaje').style.display='block';
             console.log('Usuario no encontrado');
             return;
         }
