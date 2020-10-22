@@ -34,7 +34,7 @@ body{
 .contenedor-log2{
     margin: auto;
     border: none;
-    height: 65vh;
+    height: 430px;
     width: 300px;
     min-width: 270px;
     background: rgba(0, 0, 0, 0.8);
@@ -591,7 +591,7 @@ input:focus:-ms-input-placeholder {
 }
 .inputForm{
     margin: auto;
-    width: 60%;
+    width: 160px;
     border: none;
     border-bottom: 2px solid #ffffff;
     box-shadow: 0 3px 3px -2px rgba(177,228,220,.5);
@@ -605,7 +605,12 @@ input:focus:-ms-input-placeholder {
     outline: none;
     border-bottom: 2px solid #b1e4dc;
 }
-
+input[type="time"]::-webkit-calendar-picker-indicator {
+    color: #ffffff;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+    color: #ffffff;
+}
 .form-group{
     display: flex;
     margin: 20px;
@@ -620,7 +625,8 @@ input:focus:-ms-input-placeholder {
     color: #ffffff;
 }
 .colaborador{
-    margin: 20px 0 0 auto;
+    width: 75%;
+    margin: 0 auto;
     background-color: transparent;
     border: none;
     border-bottom: 2px solid #ffffff;
