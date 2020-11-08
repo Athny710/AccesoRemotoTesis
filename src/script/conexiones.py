@@ -8,12 +8,12 @@ def swTop():
 
 def router1():
     switch1_IP = "192.168.35.22"
-    connection = telnetlib.Telnet(switch1_IP, 5000)
+    connection = telnetlib.Telnet(switch1_IP, 5002)
     connection.interact()
 
 def router2():
     switch1_IP = "192.168.35.22"
-    connection = telnetlib.Telnet(switch1_IP, 5001)
+    connection = telnetlib.Telnet(switch1_IP, 5003)
     connection.interact()
 
 def router3():
@@ -48,12 +48,12 @@ def router8():
 
 def switch1():
     switch1_IP = "192.168.35.22"
-    connection = telnetlib.Telnet(switch1_IP, 5002)
+    connection = telnetlib.Telnet(switch1_IP, 5000)
     connection.interact()
 
 def switch2():
     switch1_IP = "192.168.35.22"
-    connection = telnetlib.Telnet(switch1_IP, 5003)
+    connection = telnetlib.Telnet(switch1_IP, 5001)
     connection.interact()
 
 def switch3():

@@ -283,6 +283,7 @@ route.post("/sessionLogin", (req, res) => {
             }
         );
 });
+
 route.get("/cerrarSesion", (req, res) => {
     res.clearCookie("session");
     res.redirect("/");
@@ -291,5 +292,9 @@ route.get("/cerrarSesion", (req, res) => {
 route.get("/reestablecer", (req, res) => {
     res.render(path.join(__dirname, '../html/restablecer.ejs'));
 })
+
+route.get('/router1', (req, res) => {
+    res.render(path.join(__dirname, '../html/router1.ejs'))
+});
 
 module.exports = route;
