@@ -13,7 +13,7 @@ const ioServer = require('socket.io-client');
 app.use(express.static(path.join(__dirname, 'public')));
 
 //--------Setings
-app.set('port', 8079);
+app.set('port', 8080);
 app.engine("html", require('ejs').renderFile);
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -44,7 +44,10 @@ r1Server.on('data', (data) => {
     console.log('data from r1: '+data);
     r1Web.emit('data', data);
 });
-
+r1Server.on('prompt', (prompt) => {
+    console.log('prompt from r1: '+prompt);
+    r1Web.emit('prompt', prompt);
+});
 
 module.exports=io;
 

@@ -1,0 +1,1655 @@
+
+(function(f) {
+    if (typeof exports === "object" && typeof module !== "undefined") {
+      module.exports = f()
+    } else if (typeof define === "function" && define.amd) {
+      define([], f)
+    } else {
+      var g;
+      if (typeof window !== "undefined") {
+        g = window
+      } else if (typeof global !== "undefined") {
+        g = global
+      } else if (typeof self !== "undefined") {
+        g = self
+      } else {
+        g = this
+      }
+      g.Terminal = f()
+    }
+  })(function() {
+    var define, module, exports;
+    return (function e(t, n, r) {
+      function s(o, u) {
+        if (!n[o]) {
+          if (!t[o]) {
+            var a = typeof require == "function" && require;
+            if (!u && a) return a(o, !0);
+            if (i) return i(o, !0);
+            var f = new Error("Cannot find module '" + o + "'");
+            throw f.code = "MODULE_NOT_FOUND", f
+          }
+          var l = n[o] = {
+            exports: {}
+          };
+          t[o][0].call(l.exports, function(e) {
+            var n = t[o][1][e];
+            return s(n ? n : e)
+          }, l, l.exports, e, t, n, r)
+        }
+        return n[o].exports
+      }
+      var i = typeof require == "function" && require;
+      for (var o = 0; o < r.length; o++) s(r[o]);
+      return s
+    })({
+      1: [function(require, module, exports) {
+        /**
+         * @license MIT
+         */
+        "use strict";
+        /**
+         * Encapsulates the logic for handling compositionstart, compositionupdate and compositionend
+         * events, displaying the in-progress composition to the UI and forwarding the final composition
+         * to the handler.
+         */
+        var CompositionHelper = (function() {
+          /**
+           * Creates a new CompositionHelper.
+           * @param textarea The textarea that xterm uses for input.
+           * @param compositionView The element to display the in-progress composition in.
+           * @param terminal The Terminal to forward the finished composition to.
+           */
+          function CompositionHelper(textarea, compositionView, terminal) {
+            this.textarea = textarea;
+            this.compositionView = compositionView;
+            this.terminal = terminal;
+            this.isComposing = false;
+            this.isSendingComposition = false;
+            this.compositionPosition = {
+              start: null,
+              end: null
+            };
+          };
+          /**
+           * Handles the compositionstart event, activating the composition view.
+           */
+          CompositionHelper.prototype.compositionstart = function() {
+            this.isComposing = true;
+            this.compositionPosition.start = this.textarea.value.length;
+            this.compositionView.textContent = '';
+            this.compositionView.classList.add('active');
+          };
+          /**
+           * Handles the compositionupdate event, updating the composition view.
+           * @param {CompositionEvent} ev The event.
+           */
+          CompositionHelper.prototype.compositionupdate = function(ev) {
+            this.compositionView.textContent = ev.data;
+            this.updateCompositionElements();
+            var self = this;
+            setTimeout(function() {
+              self.compositionPosition.end = self.textarea.value.length;
+            }, 0);
+          };
+          /**
+           * Handles the compositionend event, hiding the composition view and sending the composition to
+           * the handler.
+           */
+          CompositionHelper.prototype.compositionend = function() {
+            this.finalizeComposition(true);
+          };
+          /**
+           * Handles the keydown event, routing any necessary events to the CompositionHelper functions.
+           * @param ev The keydown event.
+           * @return Whether the Terminal should continue processing the keydown event.
+           */
+          CompositionHelper.prototype.keydown = function(ev) {
+            if (this.isComposing || this.isSendingComposition) {
+              if (ev.keyCode === 229) {
+                // Continue composing if the keyCode is the "composition character"
+                return false;
+              } else if (ev.keyCode === 16 || ev.keyCode === 17 || ev.keyCode === 18) {
+                // Continue composing if the keyCode is a modifier key
+                return false;
+              } else {
+                // Finish composition immediately. This is mainly here for the case where enter is
+                // pressed and the handler needs to be triggered before the command is executed.
+                this.finalizeComposition(false);
+              }
+            }
+            if (ev.keyCode === 229) {
+              // If the "composition character" is used but gets to this point it means a non-composition
+              // character (eg. numbers and punctuation) was pressed when the IME was active.
+              this.handleAnyTextareaChanges();
+              return false;
+            }
+            return true;
+          };
+          /**
+           * Finalizes the composition, resuming regular input actions. This is called when a composition
+           * is ending.
+           * @param waitForPropogation Whether to wait for events to propogate before sending
+           *   the input. This should be false if a non-composition keystroke is entered before the
+           *   compositionend event is triggered, such as enter, so that the composition is send before
+           *   the command is executed.
+           */
+          CompositionHelper.prototype.finalizeComposition = function(waitForPropogation) {
+            this.compositionView.classList.remove('active');
+            this.isComposing = false;
+            this.clearTextareaPosition();
+            if (!waitForPropogation) {
+              // Cancel any delayed composition send requests and send the input immediately.
+              this.isSendingComposition = false;
+              var input = this.textarea.value.substring(this.compositionPosition.start, this.compositionPosition.end);
+              this.terminal.handler(input);
+            } else {
+              // Make a deep copy of the composition position here as a new compositionstart event may
+              // fire before the setTimeout executes.
+              var currentCompositionPosition = {
+                start: this.compositionPosition.start,
+                end: this.compositionPosition.end,
+              };
+              // Since composition* events happen before the changes take place in the textarea on most
+              // browsers, use a setTimeout with 0ms time to allow the native compositionend event to
+              // complete. This ensures the correct character is retrieved, this solution was used
+              // because:
+              // - The compositionend event's data property is unreliable, at least on Chromium
+              // - The last compositionupdate event's data property does not always accurately describe
+              //   the character, a counter example being Korean where an ending consonsant can move to
+              //   the following character if the following input is a vowel.
+              var self = this;
+              this.isSendingComposition = true;
+              setTimeout(function() {
+                // Ensure that the input has not already been sent
+                if (self.isSendingComposition) {
+                  self.isSendingComposition = false;
+                  var input;
+                  if (self.isComposing) {
+                    // Use the end position to get the string if a new composition has started.
+                    input = self.textarea.value.substring(currentCompositionPosition.start, currentCompositionPosition.end);
+                  } else {
+                    // Don't use the end position here in order to pick up any characters after the
+                    // composition has finished, for example when typing a non-composition character
+                    // (eg. 2) after a composition character.
+                    input = self.textarea.value.substring(currentCompositionPosition.start);
+                  }
+                  self.terminal.handler(input);
+                }
+              }, 0);
+            }
+          };
+          /**
+           * Apply any changes made to the textarea after the current event chain is allowed to complete.
+           * This should be called when not currently composing but a keydown event with the "composition
+           * character" (229) is triggered, in order to allow non-composition text to be entered when an
+           * IME is active.
+           */
+          CompositionHelper.prototype.handleAnyTextareaChanges = function() {
+            var oldValue = this.textarea.value;
+            var self = this;
+            setTimeout(function() {
+              // Ignore if a composition has started since the timeout
+              if (!self.isComposing) {
+                var newValue = self.textarea.value;
+                var diff = newValue.replace(oldValue, '');
+                if (diff.length > 0) {
+                  self.terminal.handler(diff);
+                }
+              }
+            }, 0);
+          };
+          /**
+           * Positions the composition view on top of the cursor and the textarea just below it (so the
+           * IME helper dialog is positioned correctly).
+           * @param dontRecurse Whether to use setTimeout to recursively trigger another update, this is
+           *   necessary as the IME events across browsers are not consistently triggered.
+           */
+          CompositionHelper.prototype.updateCompositionElements = function(dontRecurse) {
+            if (!this.isComposing) {
+              return;
+            }
+            var cursor = this.terminal.element.querySelector('.terminal-cursor');
+            if (cursor) {
+              // Take .xterm-rows offsetTop into account as well in case it's positioned absolutely within
+              // the .xterm element.
+              var xtermRows = this.terminal.element.querySelector('.xterm-rows');
+              var cursorTop = xtermRows.offsetTop + cursor.offsetTop;
+              this.compositionView.style.left = cursor.offsetLeft + 'px';
+              this.compositionView.style.top = cursorTop + 'px';
+              this.compositionView.style.height = cursor.offsetHeight + 'px';
+              this.compositionView.style.lineHeight = cursor.offsetHeight + 'px';
+              // Sync the textarea to the exact position of the composition view so the IME knows where the
+              // text is.
+              var compositionViewBounds = this.compositionView.getBoundingClientRect();
+              this.textarea.style.left = cursor.offsetLeft + 'px';
+              this.textarea.style.top = cursorTop + 'px';
+              this.textarea.style.width = compositionViewBounds.width + 'px';
+              this.textarea.style.height = compositionViewBounds.height + 'px';
+              this.textarea.style.lineHeight = compositionViewBounds.height + 'px';
+            }
+            if (!dontRecurse) {
+              setTimeout(this.updateCompositionElements.bind(this, true), 0);
+            }
+          };;
+          /**
+           * Clears the textarea's position so that the cursor does not blink on IE.
+           * @private
+           */
+          CompositionHelper.prototype.clearTextareaPosition = function() {
+            this.textarea.style.left = '';
+            this.textarea.style.top = '';
+          };;
+          return CompositionHelper;
+        }());
+        exports.CompositionHelper = CompositionHelper;
+  
+      }, {}],
+      2: [function(require, module, exports) {
+        /**
+         * @license MIT
+         */
+        "use strict";
+  
+        function EventEmitter() {
+          this._events = this._events || {};
+        }
+        exports.EventEmitter = EventEmitter;
+        EventEmitter.prototype.addListener = function(type, listener) {
+          this._events[type] = this._events[type] || [];
+          this._events[type].push(listener);
+        };
+        EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+        EventEmitter.prototype.removeListener = function(type, listener) {
+          if (!this._events[type])
+            return;
+          var obj = this._events[type],
+            i = obj.length;
+          while (i--) {
+            if (obj[i] === listener || obj[i].listener === listener) {
+              obj.splice(i, 1);
+              return;
+            }
+          }
+        };
+        EventEmitter.prototype.off = EventEmitter.prototype.removeListener;
+        EventEmitter.prototype.removeAllListeners = function(type) {
+          if (this._events[type])
+            delete this._events[type];
+        };
+        EventEmitter.prototype.once = function(type, listener) {
+          var self = this;
+  
+          function on() {
+            var args = Array.prototype.slice.call(arguments);
+            this.removeListener(type, on);
+            return listener.apply(this, args);
+          }
+          on.listener = listener;
+          return this.on(type, on);
+        };
+        EventEmitter.prototype.emit = function(type) {
+          if (!this._events[type])
+            return;
+          var args = Array.prototype.slice.call(arguments, 1),
+            obj = this._events[type],
+            l = obj.length,
+            i = 0;
+          for (; i < l; i++) {
+            obj[i].apply(this, args);
+          }
+        };
+        EventEmitter.prototype.listeners = function(type) {
+          return this._events[type] = this._events[type] || [];
+        };
+  
+      }, {}],
+      3: [function(require, module, exports) {
+        /**
+         * @license MIT
+         */
+        "use strict";
+        /**
+         * Represents the viewport of a terminal, the visible area within the larger buffer of output.
+         * Logic for the virtual scroll bar is included in this object.
+         */
+        var Viewport = (function() {
+          /**
+           * Creates a new Viewport.
+           * @param terminal The terminal this viewport belongs to.
+           * @param viewportElement The DOM element acting as the viewport.
+           * @param scrollArea The DOM element acting as the scroll area.
+           * @param charMeasureElement A DOM element used to measure the character size of. the terminal.
+           */
+          function Viewport(terminal, viewportElement, scrollArea, charMeasureElement) {
+            this.terminal = terminal;
+            this.viewportElement = viewportElement;
+            this.scrollArea = scrollArea;
+            this.charMeasureElement = charMeasureElement;
+            this.currentRowHeight = 0;
+            this.lastRecordedBufferLength = 0;
+            this.lastRecordedViewportHeight = 0;
+            this.terminal.on('scroll', this.syncScrollArea.bind(this));
+            this.terminal.on('resize', this.syncScrollArea.bind(this));
+            this.viewportElement.addEventListener('scroll', this.onScroll.bind(this));
+            this.syncScrollArea();
+          }
+          /**
+           * Refreshes row height, setting line-height, viewport height and scroll area height if
+           * necessary.
+           * @param charSize A character size measurement bounding rect object, if it doesn't exist it will
+           *   be created.
+           */
+          Viewport.prototype.refresh = function(charSize) {
+            var size = charSize || this.charMeasureElement.getBoundingClientRect();
+            if (size.height > 0) {
+              var rowHeightChanged = size.height !== this.currentRowHeight;
+              if (rowHeightChanged) {
+                this.currentRowHeight = size.height;
+                this.viewportElement.style.lineHeight = size.height + 'px';
+                this.terminal.rowContainer.style.lineHeight = size.height + 'px';
+              }
+              var viewportHeightChanged = this.lastRecordedViewportHeight !== this.terminal.rows;
+              if (rowHeightChanged || viewportHeightChanged) {
+                this.lastRecordedViewportHeight = this.terminal.rows;
+                this.viewportElement.style.height = size.height * this.terminal.rows + 'px';
+              }
+              this.scrollArea.style.height = (size.height * this.lastRecordedBufferLength) + 'px';
+            }
+          };
+          /**
+           * Updates dimensions and synchronizes the scroll area if necessary.
+           */
+          Viewport.prototype.syncScrollArea = function() {
+            if (this.lastRecordedBufferLength !== this.terminal.lines.length) {
+              // If buffer height changed
+              this.lastRecordedBufferLength = this.terminal.lines.length;
+              this.refresh();
+            } else if (this.lastRecordedViewportHeight !== this.terminal.rows) {
+              // If viewport height changed
+              this.refresh();
+            } else {
+              // If size has changed, refresh viewport
+              var size = this.charMeasureElement.getBoundingClientRect();
+              if (size.height !== this.currentRowHeight) {
+                this.refresh(size);
+              }
+            }
+            // Sync scrollTop
+            var scrollTop = this.terminal.ydisp * this.currentRowHeight;
+            if (this.viewportElement.scrollTop !== scrollTop) {
+              this.viewportElement.scrollTop = scrollTop;
+            }
+          };
+          /**
+           * Handles scroll events on the viewport, calculating the new viewport and requesting the
+           * terminal to scroll to it.
+           * @param ev The scroll event.
+           */
+          Viewport.prototype.onScroll = function(ev) {
+            var newRow = Math.round(this.viewportElement.scrollTop / this.currentRowHeight);
+            var diff = newRow - this.terminal.ydisp;
+            this.terminal.scrollDisp(diff, true);
+          };
+          /**
+           * Handles mouse wheel events by adjusting the viewport's scrollTop and delegating the actual
+           * scrolling to `onScroll`, this event needs to be attached manually by the consumer of
+           * `Viewport`.
+           * @param ev The mouse wheel event.
+           */
+          Viewport.prototype.onWheel = function(ev) {
+            if (ev.deltaY === 0) {
+              // Do nothing if it's not a vertical scroll event
+              return;
+            }
+            // Fallback to WheelEvent.DOM_DELTA_PIXEL
+            var multiplier = 1;
+            if (ev.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+              multiplier = this.currentRowHeight;
+            } else if (ev.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+              multiplier = this.currentRowHeight * this.terminal.rows;
+            }
+            this.viewportElement.scrollTop += ev.deltaY * multiplier;
+            // Prevent the page from scrolling when the terminal scrolls
+            ev.preventDefault();
+          };;
+          return Viewport;
+        }());
+        exports.Viewport = Viewport;
+  
+      }, {}],
+      4: [function(require, module, exports) {
+        /**
+         * Clipboard handler module: exports methods for handling all clipboard-related events in the
+         * terminal.
+         * @module xterm/handlers/Clipboard
+         * @license MIT
+         */
+        "use strict";
+        /**
+         * Prepares text copied from terminal selection, to be saved in the clipboard by:
+         *   1. stripping all trailing white spaces
+         *   2. converting all non-breaking spaces to regular spaces
+         * @param {string} text The copied text that needs processing for storing in clipboard
+         * @returns {string}
+         */
+        function prepareTextForClipboard(text) {
+          var space = String.fromCharCode(32),
+            nonBreakingSpace = String.fromCharCode(160),
+            allNonBreakingSpaces = new RegExp(nonBreakingSpace, 'g'),
+            processedText = text.split('\n').map(function(line) {
+              // Strip all trailing white spaces and convert all non-breaking spaces
+              // to regular spaces.
+              var processedLine = line.replace(/\s+$/g, '').replace(allNonBreakingSpaces, space);
+              return processedLine;
+            }).join('\n');
+          return processedText;
+        }
+        exports.prepareTextForClipboard = prepareTextForClipboard;
+        /**
+         * Binds copy functionality to the given terminal.
+         * @param {ClipboardEvent} ev The original copy event to be handled
+         */
+        function copyHandler(ev, term) {
+          // We cast `window` to `any` type, because TypeScript has not declared the `clipboardData`
+          // property that we use below for Internet Explorer.
+          var copiedText = window.getSelection().toString(),
+            text = prepareTextForClipboard(copiedText);
+          if (term.browser.isMSIE) {
+            window.clipboardData.setData('Text', text);
+          } else {
+            ev.clipboardData.setData('text/plain', text);
+          }
+          ev.preventDefault(); // Prevent or the original text will be copied.
+        }
+        exports.copyHandler = copyHandler;
+        /**
+         * Redirect the clipboard's data to the terminal's input handler.
+         * @param {ClipboardEvent} ev The original paste event to be handled
+         * @param {Terminal} term The terminal on which to apply the handled paste event
+         */
+        function pasteHandler(ev, term) {
+          ev.stopPropagation();
+          var text;
+          var dispatchPaste = function(text) {
+            term.handler(text);
+            term.textarea.value = '';
+            return term.cancel(ev);
+          };
+          if (term.browser.isMSIE) {
+            if (window.clipboardData) {
+              text = window.clipboardData.getData('Text');
+              dispatchPaste(text);
+            }
+          } else {
+            if (ev.clipboardData) {
+              text = ev.clipboardData.getData('text/plain');
+              dispatchPaste(text);
+            }
+          }
+        }
+        exports.pasteHandler = pasteHandler;
+        /**
+         * Bind to right-click event and allow right-click copy and paste.
+         *
+         * **Logic**
+         * If text is selected and right-click happens on selected text, then
+         * do nothing to allow seamless copying.
+         * If no text is selected or right-click is outside of the selection
+         * area, then bring the terminal's input below the cursor, in order to
+         * trigger the event on the textarea and allow-right click paste, without
+         * caring about disappearing selection.
+         * @param {ClipboardEvent} ev The original paste event to be handled
+         * @param {Terminal} term The terminal on which to apply the handled paste event
+         */
+        function rightClickHandler(ev, term) {
+          var s = document.getSelection(),
+            selectedText = prepareTextForClipboard(s.toString()),
+            clickIsOnSelection = false,
+            x = ev.clientX,
+            y = ev.clientY;
+          if (s.rangeCount) {
+            var r = s.getRangeAt(0),
+              cr = r.getClientRects(),
+              i = void 0,
+              rect = void 0;
+            for (i = 0; i < cr.length; i++) {
+              rect = cr[i];
+              clickIsOnSelection = ((x > rect.left) && (x < rect.right) &&
+                (y > rect.top) && (y < rect.bottom));
+              if (clickIsOnSelection) {
+                break;
+              }
+            }
+            // If we clicked on selection and selection is not a single space,
+            // then mark the right click as copy-only. We check for the single
+            // space selection, as this can happen when clicking on an &nbsp;
+            // and there is not much pointing in copying a single space.
+            if (selectedText.match(/^\s$/) || !selectedText.length) {
+              clickIsOnSelection = false;
+            }
+          }
+          // Bring textarea at the cursor position
+          if (!clickIsOnSelection) {
+            term.textarea.style.position = 'fixed';
+            term.textarea.style.width = '20px';
+            term.textarea.style.height = '20px';
+            term.textarea.style.left = (x - 10) + 'px';
+            term.textarea.style.top = (y - 10) + 'px';
+            term.textarea.style.zIndex = '1000';
+            term.textarea.focus();
+            // Reset the terminal textarea's styling
+            setTimeout(function() {
+              term.textarea.style.position = null;
+              term.textarea.style.width = null;
+              term.textarea.style.height = null;
+              term.textarea.style.left = null;
+              term.textarea.style.top = null;
+              term.textarea.style.zIndex = null;
+            }, 4);
+          }
+        }
+        exports.rightClickHandler = rightClickHandler;
+  
+      }, {}],
+      5: [function(require, module, exports) {
+        /**
+         * Attributes and methods to help with identifying the current browser and platform.
+         * @module xterm/utils/Browser
+         * @license MIT
+         */
+        "use strict";
+        var Generic_js_1 = require('./Generic.js');
+        var isNode = (typeof navigator == 'undefined') ? true : false;
+        var userAgent = (isNode) ? 'node' : navigator.userAgent;
+        var platform = (isNode) ? 'node' : navigator.platform;
+        exports.isFirefox = !!~userAgent.indexOf('Firefox');
+        exports.isMSIE = !!~userAgent.indexOf('MSIE') || !!~userAgent.indexOf('Trident');
+        // Find the users platform. We use this to interpret the meta key
+        // and ISO third level shifts.
+        // http://stackoverflow.com/q/19877924/577598
+        exports.isMac = Generic_js_1.contains(['Macintosh', 'MacIntel', 'MacPPC', 'Mac68K'], platform);
+        exports.isIpad = platform === 'iPad';
+        exports.isIphone = platform === 'iPhone';
+        exports.isMSWindows = Generic_js_1.contains(['Windows', 'Win16', 'Win32', 'WinCE'], platform);
+  
+      }, {
+        "./Generic.js": 6
+      }],
+      6: [function(require, module, exports) {
+        /**
+         * Generic utilities module with methods that can be helpful at different parts of the code base.
+         * @module xterm/utils/Generic
+         * @license MIT
+         */
+        "use strict";
+        /**
+         * Return if the given array contains the given element
+         * @param {Array} array The array to search for the given element.
+         * @param {Object} el The element to look for into the array
+         */
+        exports.contains = function(arr, el) {
+          return arr.indexOf(el) >= 0;
+        };
+  
+      }, {}],
+      7: [function(require, module, exports) {
+        /**
+         * xterm.js: xterm, in the browser
+         * Originally forked from (with the author's permission):
+         *   Fabrice Bellard's javascript vt100 for jslinux:
+         *   http://bellard.org/jslinux/
+         *   Copyright (c) 2011 Fabrice Bellard
+         *   The original design remains. The terminal itself
+         *   has been extended to include xterm CSI codes, among
+         *   other features.
+         * @license MIT
+         */
+        "use strict";
+        var CompositionHelper_js_1 = require('./CompositionHelper.js');
+        var EventEmitter_js_1 = require('./EventEmitter.js');
+        var Viewport_js_1 = require('./Viewport.js');
+        var Clipboard_js_1 = require('./handlers/Clipboard.js');
+        var Browser = require('./utils/Browser');
+        /**
+         * Terminal Emulation References:
+         *   http://vt100.net/
+         *   http://invisible-island.net/xterm/ctlseqs/ctlseqs.txt
+         *   http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+         *   http://invisible-island.net/vttest/
+         *   http://www.inwap.com/pdp10/ansicode.txt
+         *   http://linux.die.net/man/4/console_codes
+         *   http://linux.die.net/man/7/urxvt
+         */
+        // Let it work inside Node.js for automated testing purposes.
+        var document = (typeof window != 'undefined') ? window.document : null;
+        /**
+         * States
+         */
+        var normal = 0,
+          escaped = 1,
+          csi = 2,
+          osc = 3,
+          charset = 4,
+          dcs = 5,
+          ignore = 6;
+        /**
+         * Terminal
+         */
+        /**
+         * Creates a new `Terminal` object.
+         *
+         * @param {object} options An object containing a set of options, the available options are:
+         *   - `cursorBlink` (boolean): Whether the terminal cursor blinks
+         *   - `cols` (number): The number of columns of the terminal (horizontal size)
+         *   - `rows` (number): The number of rows of the terminal (vertical size)
+         *
+         * @public
+         * @class Xterm Xterm
+         * @alias module:xterm/src/xterm
+         */
+        function Terminal(options) {
+          var self = this;
+          if (!(this instanceof Terminal)) {
+            return new Terminal(arguments[0], arguments[1], arguments[2]);
+          }
+          self.browser = Browser;
+          self.cancel = Terminal.cancel;
+          EventEmitter_js_1.EventEmitter.call(this);
+          if (typeof options === 'number') {
+            options = {
+              cols: arguments[0],
+              rows: arguments[1],
+              handler: arguments[2]
+            };
+          }
+          options = options || {};
+          Object.keys(Terminal.defaults).forEach(function(key) {
+            if (options[key] == null) {
+              options[key] = Terminal.options[key];
+              if (Terminal[key] !== Terminal.defaults[key]) {
+                options[key] = Terminal[key];
+              }
+            }
+            self[key] = options[key];
+          });
+          if (options.colors.length === 8) {
+            options.colors = options.colors.concat(Terminal._colors.slice(8));
+          } else if (options.colors.length === 16) {
+            options.colors = options.colors.concat(Terminal._colors.slice(16));
+          } else if (options.colors.length === 10) {
+            options.colors = options.colors.slice(0, -2).concat(Terminal._colors.slice(8, -2), options.colors.slice(-2));
+          } else if (options.colors.length === 18) {
+            options.colors = options.colors.concat(Terminal._colors.slice(16, -2), options.colors.slice(-2));
+          }
+          this.colors = options.colors;
+          this.options = options;
+          // this.context = options.context || window;
+          // this.document = options.document || document;
+          this.parent = options.body || options.parent || (document ? document.getElementsByTagName('body')[0] : null);
+          this.cols = options.cols || options.geometry[0];
+          this.rows = options.rows || options.geometry[1];
+          this.geometry = [this.cols, this.rows];
+          if (options.handler) {
+            this.on('data', options.handler);
+          }
+          /**
+           * The scroll position of the y cursor, ie. ybase + y = the y position within the entire
+           * buffer
+           */
+          this.ybase = 0;
+          /**
+           * The scroll position of the viewport
+           */
+          this.ydisp = 0;
+          /**
+           * The cursor's x position after ybase
+           */
+          this.x = 0;
+          /**
+           * The cursor's y position after ybase
+           */
+          this.y = 0;
+          /**
+           * Used to debounce the refresh function
+           */
+          this.isRefreshing = false;
+          /**
+           * Whether there is a full terminal refresh queued
+           */
+          this.cursorState = 0;
+          this.cursorHidden = false;
+          this.convertEol;
+          this.state = 0;
+          this.queue = '';
+          this.scrollTop = 0;
+          this.scrollBottom = this.rows - 1;
+          this.customKeydownHandler = null;
+          // modes
+          this.applicationKeypad = false;
+          this.applicationCursor = false;
+          this.originMode = false;
+          this.insertMode = false;
+          this.wraparoundMode = true; // defaults: xterm - true, vt100 - false
+          this.normal = null;
+          // charset
+          this.charset = null;
+          this.gcharset = null;
+          this.glevel = 0;
+          this.charsets = [null];
+          // mouse properties
+          this.decLocator;
+          this.x10Mouse;
+          this.vt200Mouse;
+          this.vt300Mouse;
+          this.normalMouse;
+          this.mouseEvents;
+          this.sendFocus;
+          this.utfMouse;
+          this.sgrMouse;
+          this.urxvtMouse;
+          // misc
+          this.element;
+          this.children;
+          this.refreshStart;
+          this.refreshEnd;
+          this.savedX;
+          this.savedY;
+          this.savedCols;
+          // stream
+          this.readable = true;
+          this.writable = true;
+          this.defAttr = (0 << 18) | (257 << 9) | (256 << 0);
+          this.curAttr = this.defAttr;
+          this.params = [];
+          this.currentParam = 0;
+          this.prefix = '';
+          this.postfix = '';
+          // leftover surrogate high from previous write invocation
+          this.surrogate_high = '';
+          /**
+           * An array of all lines in the entire buffer, including the prompt. The lines are array of
+           * characters which are 2-length arrays where [0] is an attribute and [1] is the character.
+           */
+          this.lines = [];
+          var i = this.rows;
+          while (i--) {
+            this.lines.push(this.blankLine());
+          }
+          this.tabs;
+          this.setupStops();
+          // Store if user went browsing history in scrollback
+          this.userScrolling = false;
+        }
+        inherits(Terminal, EventEmitter_js_1.EventEmitter);
+        /**
+         * back_color_erase feature for xterm.
+         */
+        Terminal.prototype.eraseAttr = function() {
+          // if (this.is('screen')) return this.defAttr;
+          return (this.defAttr & ~0x1ff) | (this.curAttr & 0x1ff);
+        };
+        /**
+         * Colors
+         */
+        // Colors 0-15
+        Terminal.tangoColors = [
+          // dark:
+          '#2e3436',
+          '#cc0000',
+          '#4e9a06',
+          '#c4a000',
+          '#3465a4',
+          '#75507b',
+          '#06989a',
+          '#d3d7cf',
+          // bright:
+          '#555753',
+          '#ef2929',
+          '#8ae234',
+          '#fce94f',
+          '#729fcf',
+          '#ad7fa8',
+          '#34e2e2',
+          '#eeeeec'
+        ];
+        // Colors 0-15 + 16-255
+        // Much thanks to TooTallNate for writing this.
+        Terminal.colors = (function() {
+          var colors = Terminal.tangoColors.slice(),
+            r = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff],
+            i;
+          // 16-231
+          i = 0;
+          for (; i < 216; i++) {
+            out(r[(i / 36) % 6 | 0], r[(i / 6) % 6 | 0], r[i % 6]);
+          }
+          // 232-255 (grey)
+          i = 0;
+          for (; i < 24; i++) {
+            r = 8 + i * 10;
+            out(r, r, r);
+          }
+  
+          function out(r, g, b) {
+            colors.push('#' + hex(r) + hex(g) + hex(b));
+          }
+  
+          function hex(c) {
+            c = c.toString(16);
+            return c.length < 2 ? '0' + c : c;
+          }
+          return colors;
+        })();
+        Terminal._colors = Terminal.colors.slice();
+        Terminal.vcolors = (function() {
+          var out = [],
+            colors = Terminal.colors,
+            i = 0,
+            color;
+          for (; i < 256; i++) {
+            color = parseInt(colors[i].substring(1), 16);
+            out.push([
+              (color >> 16) & 0xff,
+              (color >> 8) & 0xff,
+              color & 0xff
+            ]);
+          }
+          return out;
+        })();
+        /**
+         * Options
+         */
+        Terminal.defaults = {
+          colors: Terminal.colors,
+          theme: 'default',
+          convertEol: false,
+          termName: 'xterm',
+          geometry: [80, 24],
+          cursorBlink: false,
+          visualBell: false,
+          popOnBell: false,
+          scrollback: 1000,
+          screenKeys: false,
+          debug: false,
+          cancelEvents: false
+        };
+        Terminal.options = {};
+        Terminal.focus = null;
+        each(keys(Terminal.defaults), function(key) {
+          Terminal[key] = Terminal.defaults[key];
+          Terminal.options[key] = Terminal.defaults[key];
+        });
+        /**
+         * Focus the terminal. Delegates focus handling to the terminal's DOM element.
+         */
+        Terminal.prototype.focus = function() {
+          return this.textarea.focus();
+        };
+        /**
+         * Retrieves an option's value from the terminal.
+         * @param {string} key The option key.
+         */
+        Terminal.prototype.getOption = function(key, value) {
+          if (!(key in Terminal.defaults)) {
+            throw new Error('No option with key "' + key + '"');
+          }
+          if (typeof this.options[key] !== 'undefined') {
+            return this.options[key];
+          }
+          return this[key];
+        };
+        /**
+         * Sets an option on the terminal.
+         * @param {string} key The option key.
+         * @param {string} value The option value.
+         */
+        Terminal.prototype.setOption = function(key, value) {
+          if (!(key in Terminal.defaults)) {
+            throw new Error('No option with key "' + key + '"');
+          }
+          this[key] = value;
+          this.options[key] = value;
+        };
+        /**
+         * Binds the desired focus behavior on a given terminal object.
+         *
+         * @static
+         */
+        Terminal.bindFocus = function(term) {
+          on(term.textarea, 'focus', function(ev) {
+            if (term.sendFocus) {
+              term.send('\x1b[I');
+            }
+            term.element.classList.add('focus');
+            term.showCursor();
+            Terminal.focus = term;
+            term.emit('focus', {
+              terminal: term
+            });
+          });
+        };
+        /**
+         * Blur the terminal. Delegates blur handling to the terminal's DOM element.
+         */
+        Terminal.prototype.blur = function() {
+          return this.textarea.blur();
+        };
+        /**
+         * Binds the desired blur behavior on a given terminal object.
+         *
+         * @static
+         */
+        Terminal.bindBlur = function(term) {
+          on(term.textarea, 'blur', function(ev) {
+            term.refresh(term.y, term.y);
+            if (term.sendFocus) {
+              term.send('\x1b[O');
+            }
+            term.element.classList.remove('focus');
+            Terminal.focus = null;
+            term.emit('blur', {
+              terminal: term
+            });
+          });
+        };
+        /**
+         * Initialize default behavior
+         */
+        Terminal.prototype.initGlobal = function() {
+          var term = this;
+          Terminal.bindKeys(this);
+          Terminal.bindFocus(this);
+          Terminal.bindBlur(this);
+          // Bind clipboard functionality
+          on(this.element, 'copy', function(ev) {
+            Clipboard_js_1.copyHandler.call(this, ev, term);
+          });
+          on(this.textarea, 'paste', function(ev) {
+            Clipboard_js_1.pasteHandler.call(this, ev, term);
+          });
+  
+          function rightClickHandlerWrapper(ev) {
+            Clipboard_js_1.rightClickHandler.call(this, ev, term);
+          }
+          if (term.browser.isFirefox) {
+            on(this.element, 'mousedown', function(ev) {
+              if (ev.button == 2) {
+                rightClickHandlerWrapper(ev);
+              }
+            });
+          } else {
+            on(this.element, 'contextmenu', rightClickHandlerWrapper);
+          }
+        };
+        /**
+         * Apply key handling to the terminal
+         */
+        Terminal.bindKeys = function(term) {
+          on(term.element, 'keydown', function(ev) {
+            if (document.activeElement != this) {
+              return;
+            }
+            term.keyDown(ev);
+          }, true);
+          on(term.element, 'keypress', function(ev) {
+            if (document.activeElement != this) {
+              return;
+            }
+            term.keyPress(ev);
+          }, true);
+          on(term.element, 'keyup', term.focus.bind(term));
+          on(term.textarea, 'keydown', function(ev) {
+            term.keyDown(ev);
+          }, true);
+          on(term.textarea, 'keypress', function(ev) {
+            term.keyPress(ev);
+            // Truncate the textarea's value, since it is not needed
+            this.value = '';
+          }, true);
+          on(term.textarea, 'compositionstart', term.compositionHelper.compositionstart.bind(term.compositionHelper));
+          on(term.textarea, 'compositionupdate', term.compositionHelper.compositionupdate.bind(term.compositionHelper));
+          on(term.textarea, 'compositionend', term.compositionHelper.compositionend.bind(term.compositionHelper));
+          term.on('refresh', term.compositionHelper.updateCompositionElements.bind(term.compositionHelper));
+        };
+        /**
+         * Insert the given row to the terminal or produce a new one
+         * if no row argument is passed. Return the inserted row.
+         * @param {HTMLElement} row (optional) The row to append to the terminal.
+         */
+        Terminal.prototype.insertRow = function(row) {
+          if (typeof row != 'object') {
+            row = document.createElement('div');
+          }
+          this.rowContainer.appendChild(row);
+          this.children.push(row);
+          return row;
+        };
+        /**
+         * Opens the terminal within an element.
+         *
+         * @param {HTMLElement} parent The element to create the terminal within.
+         */
+        Terminal.prototype.open = function(parent) {
+          var self = this,
+            i = 0,
+            div;
+          this.parent = parent || this.parent;
+          if (!this.parent) {
+            throw new Error('Terminal requires a parent element.');
+          }
+          // Grab global elements
+          this.context = this.parent.ownerDocument.defaultView;
+          this.document = this.parent.ownerDocument;
+          this.body = this.document.getElementsByTagName('body')[0];
+          //Create main element container
+          this.element = this.document.createElement('div');
+          this.element.classList.add('terminal');
+          this.element.classList.add('xterm');
+          this.element.classList.add('xterm-theme-' + this.theme);
+          this.element.style.height;
+          this.element.setAttribute('tabindex', 0);
+          this.viewportElement = document.createElement('div');
+          this.viewportElement.classList.add('xterm-viewport');
+          this.element.appendChild(this.viewportElement);
+          this.viewportScrollArea = document.createElement('div');
+          this.viewportScrollArea.classList.add('xterm-scroll-area');
+          this.viewportElement.appendChild(this.viewportScrollArea);
+          // Create the container that will hold the lines of the terminal and then
+          // produce the lines the lines.
+          this.rowContainer = document.createElement('div');
+          this.rowContainer.classList.add('xterm-rows');
+          this.element.appendChild(this.rowContainer);
+          this.children = [];
+          // Create the container that will hold helpers like the textarea for
+          // capturing DOM Events. Then produce the helpers.
+          this.helperContainer = document.createElement('div');
+          this.helperContainer.classList.add('xterm-helpers');
+          // TODO: This should probably be inserted once it's filled to prevent an additional layout
+          this.element.appendChild(this.helperContainer);
+          this.textarea = document.createElement('textarea');
+          this.textarea.classList.add('xterm-helper-textarea');
+          this.textarea.setAttribute('autocorrect', 'off');
+          this.textarea.setAttribute('autocapitalize', 'off');
+          this.textarea.setAttribute('spellcheck', 'false');
+          this.textarea.tabIndex = 0;
+          this.textarea.addEventListener('focus', function() {
+            self.emit('focus', {
+              terminal: self
+            });
+          });
+          this.textarea.addEventListener('blur', function() {
+            self.emit('blur', {
+              terminal: self
+            });
+          });
+          this.helperContainer.appendChild(this.textarea);
+          this.compositionView = document.createElement('div');
+          this.compositionView.classList.add('composition-view');
+          this.compositionHelper = new CompositionHelper_js_1.CompositionHelper(this.textarea, this.compositionView, this);
+          this.helperContainer.appendChild(this.compositionView);
+          this.charMeasureElement = document.createElement('div');
+          this.charMeasureElement.classList.add('xterm-char-measure-element');
+          this.charMeasureElement.innerHTML = 'W';
+          this.helperContainer.appendChild(this.charMeasureElement);
+          for (; i < this.rows; i++) {
+            this.insertRow();
+          }
+          this.parent.appendChild(this.element);
+          this.viewport = new Viewport_js_1.Viewport(this, this.viewportElement, this.viewportScrollArea, this.charMeasureElement);
+          // Draw the screen.
+          this.refresh(0, this.rows - 1);
+          // Initialize global actions that
+          // need to be taken on the document.
+          this.initGlobal();
+          // Ensure there is a Terminal.focus.
+          this.focus();
+          on(this.element, 'click', function() {
+            var selection = document.getSelection(),
+              collapsed = selection.isCollapsed,
+              isRange = typeof collapsed == 'boolean' ? !collapsed : selection.type == 'Range';
+            if (!isRange) {
+              self.focus();
+            }
+          });
+          // Listen for mouse events and translate
+          // them into terminal mouse protocols.
+          this.bindMouse();
+          // Figure out whether boldness affects
+          // the character width of monospace fonts.
+          if (Terminal.brokenBold == null) {
+            Terminal.brokenBold = isBoldBroken(this.document);
+          }
+          /**
+           * This event is emitted when terminal has completed opening.
+           *
+           * @event open
+           */
+          this.emit('open');
+        };
+        /**
+         * Attempts to load an add-on using CommonJS or RequireJS (whichever is available).
+         * @param {string} addon The name of the addon to load
+         * @static
+         */
+        Terminal.loadAddon = function(addon, callback) {
+          if (typeof exports === 'object' && typeof module === 'object') {
+            // CommonJS
+            return require('./addons/' + addon + '/' + addon);
+          } else if (typeof define == 'function') {
+            // RequireJS
+            return require(['./addons/' + addon + '/' + addon], callback);
+          } else {
+            console.error('Cannot load a module without a CommonJS or RequireJS environment.');
+            return false;
+          }
+        };
+        /**
+         * XTerm mouse events
+         * http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#Mouse%20Tracking
+         * To better understand these
+         * the xterm code is very helpful:
+         * Relevant files:
+         *   button.c, charproc.c, misc.c
+         * Relevant functions in xterm/button.c:
+         *   BtnCode, EmitButtonCode, EditorButton, SendMousePosition
+         */
+        Terminal.prototype.bindMouse = function() {
+          var el = this.element,
+            self = this,
+            pressed = 32;
+          // mouseup, mousedown, wheel
+          // left click: ^[[M 3<^[[M#3<
+          // wheel up: ^[[M`3>
+          function sendButton(ev) {
+            var button, pos;
+            // get the xterm-style button
+            button = getButton(ev);
+            // get mouse coordinates
+            pos = getCoords(ev);
+            if (!pos)
+              return;
+            sendEvent(button, pos);
+            switch (ev.overrideType || ev.type) {
+              case 'mousedown':
+                pressed = button;
+                break;
+              case 'mouseup':
+                // keep it at the left
+                // button, just in case.
+                pressed = 32;
+                break;
+              case 'wheel':
+                // nothing. don't
+                // interfere with
+                // `pressed`.
+                break;
+            }
+          }
+          // motion example of a left click:
+          // ^[[M 3<^[[M@4<^[[M@5<^[[M@6<^[[M@7<^[[M#7<
+          function sendMove(ev) {
+            var button = pressed,
+              pos;
+            pos = getCoords(ev);
+            if (!pos)
+              return;
+            // buttons marked as motions
+            // are incremented by 32
+            button += 32;
+            sendEvent(button, pos);
+          }
+          // encode button and
+          // position to characters
+          function encode(data, ch) {
+            if (!self.utfMouse) {
+              if (ch === 255)
+                return data.push(0);
+              if (ch > 127)
+                ch = 127;
+              data.push(ch);
+            } else {
+              if (ch === 2047)
+                return data.push(0);
+              if (ch < 127) {
+                data.push(ch);
+              } else {
+                if (ch > 2047)
+                  ch = 2047;
+                data.push(0xC0 | (ch >> 6));
+                data.push(0x80 | (ch & 0x3F));
+              }
+            }
+          }
+          // send a mouse event:
+          // regular/utf8: ^[[M Cb Cx Cy
+          // urxvt: ^[[ Cb ; Cx ; Cy M
+          // sgr: ^[[ Cb ; Cx ; Cy M/m
+          // vt300: ^[[ 24(1/3/5)~ [ Cx , Cy ] \r
+          // locator: CSI P e ; P b ; P r ; P c ; P p & w
+          function sendEvent(button, pos) {
+            // self.emit('mouse', {
+            //   x: pos.x - 32,
+            //   y: pos.x - 32,
+            //   button: button
+            // });
+            if (self.vt300Mouse) {
+              // NOTE: Unstable.
+              // http://www.vt100.net/docs/vt3xx-gp/chapter15.html
+              button &= 3;
+              pos.x -= 32;
+              pos.y -= 32;
+              var data = '\x1b[24';
+              if (button === 0)
+                data += '1';
+              else if (button === 1)
+                data += '3';
+              else if (button === 2)
+                data += '5';
+              else if (button === 3)
+                return;
+              else
+                data += '0';
+              data += '~[' + pos.x + ',' + pos.y + ']\r';
+              self.send(data);
+              return;
+            }
+            if (self.decLocator) {
+              // NOTE: Unstable.
+              button &= 3;
+              pos.x -= 32;
+              pos.y -= 32;
+              if (button === 0)
+                button = 2;
+              else if (button === 1)
+                button = 4;
+              else if (button === 2)
+                button = 6;
+              else if (button === 3)
+                button = 3;
+              self.send('\x1b[' +
+                button +
+                ';' +
+                (button === 3 ? 4 : 0) +
+                ';' +
+                pos.y +
+                ';' +
+                pos.x +
+                ';' +
+                (pos.page || 0) +
+                '&w');
+              return;
+            }
+            if (self.urxvtMouse) {
+              pos.x -= 32;
+              pos.y -= 32;
+              pos.x++;
+              pos.y++;
+              self.send('\x1b[' + button + ';' + pos.x + ';' + pos.y + 'M');
+              return;
+            }
+            if (self.sgrMouse) {
+              pos.x -= 32;
+              pos.y -= 32;
+              self.send('\x1b[<' +
+                ((button & 3) === 3 ? button & ~3 : button) +
+                ';' +
+                pos.x +
+                ';' +
+                pos.y +
+                ((button & 3) === 3 ? 'm' : 'M'));
+              return;
+            }
+            var data = [];
+            encode(data, button);
+            encode(data, pos.x);
+            encode(data, pos.y);
+            self.send('\x1b[M' + String.fromCharCode.apply(String, data));
+          }
+  
+          function getButton(ev) {
+            var button, shift, meta, ctrl, mod;
+            // two low bits:
+            // 0 = left
+            // 1 = middle
+            // 2 = right
+            // 3 = release
+            // wheel up/down:
+            // 1, and 2 - with 64 added
+            switch (ev.overrideType || ev.type) {
+              case 'mousedown':
+                button = ev.button != null ?
+                  +ev.button :
+                  ev.which != null ?
+                  ev.which - 1 :
+                  null;
+                if (self.browser.isMSIE) {
+                  button = button === 1 ? 0 : button === 4 ? 1 : button;
+                }
+                break;
+              case 'mouseup':
+                button = 3;
+                break;
+              case 'DOMMouseScroll':
+                button = ev.detail < 0 ?
+                  64 :
+                  65;
+                break;
+              case 'wheel':
+                button = ev.wheelDeltaY > 0 ?
+                  64 :
+                  65;
+                break;
+            }
+            // next three bits are the modifiers:
+            // 4 = shift, 8 = meta, 16 = control
+            shift = ev.shiftKey ? 4 : 0;
+            meta = ev.metaKey ? 8 : 0;
+            ctrl = ev.ctrlKey ? 16 : 0;
+            mod = shift | meta | ctrl;
+            // no mods
+            if (self.vt200Mouse) {
+              // ctrl only
+              mod &= ctrl;
+            } else if (!self.normalMouse) {
+              mod = 0;
+            }
+            // increment to SP
+            button = (32 + (mod << 2)) + button;
+            return button;
+          }
+          // mouse coordinates measured in cols/rows
+          function getCoords(ev) {
+            var x, y, w, h, el;
+            // ignore browsers without pageX for now
+            if (ev.pageX == null)
+              return;
+            x = ev.pageX;
+            y = ev.pageY;
+            el = self.element;
+            // should probably check offsetParent
+            // but this is more portable
+            while (el && el !== self.document.documentElement) {
+              x -= el.offsetLeft;
+              y -= el.offsetTop;
+              el = 'offsetParent' in el ?
+                el.offsetParent :
+                el.parentNode;
+            }
+            // convert to cols/rows
+            w = self.element.clientWidth;
+            h = self.element.clientHeight;
+            x = Math.ceil((x / w) * self.cols);
+            y = Math.ceil((y / h) * self.rows);
+            // be sure to avoid sending
+            // bad positions to the program
+            if (x < 0)
+              x = 0;
+            if (x > self.cols)
+              x = self.cols;
+            if (y < 0)
+              y = 0;
+            if (y > self.rows)
+              y = self.rows;
+            // xterm sends raw bytes and
+            // starts at 32 (SP) for each.
+            x += 32;
+            y += 32;
+            return {
+              x: x,
+              y: y,
+              type: 'wheel'
+            };
+          }
+          on(el, 'mousedown', function(ev) {
+            if (!self.mouseEvents)
+              return;
+            // send the button
+            sendButton(ev);
+            // ensure focus
+            self.focus();
+            // fix for odd bug
+            //if (self.vt200Mouse && !self.normalMouse) {
+            if (self.vt200Mouse) {
+              ev.overrideType = 'mouseup';
+              sendButton(ev);
+              return self.cancel(ev);
+            }
+            // bind events
+            if (self.normalMouse)
+              on(self.document, 'mousemove', sendMove);
+            // x10 compatibility mode can't send button releases
+            if (!self.x10Mouse) {
+              on(self.document, 'mouseup', function up(ev) {
+                sendButton(ev);
+                if (self.normalMouse)
+                  off(self.document, 'mousemove', sendMove);
+                off(self.document, 'mouseup', up);
+                return self.cancel(ev);
+              });
+            }
+            return self.cancel(ev);
+          });
+          //if (self.normalMouse) {
+          //  on(self.document, 'mousemove', sendMove);
+          //}
+          on(el, 'wheel', function(ev) {
+            if (!self.mouseEvents)
+              return;
+            if (self.x10Mouse ||
+              self.vt300Mouse ||
+              self.decLocator)
+              return;
+            sendButton(ev);
+            return self.cancel(ev);
+          });
+          // allow wheel scrolling in
+          // the shell for example
+          on(el, 'wheel', function(ev) {
+            if (self.mouseEvents)
+              return;
+            self.viewport.onWheel(ev);
+            return self.cancel(ev);
+          });
+        };
+        /**
+         * Destroys the terminal.
+         */
+        Terminal.prototype.destroy = function() {
+          this.readable = false;
+          this.writable = false;
+          this._events = {};
+          this.handler = function() {};
+          this.write = function() {};
+          if (this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
+          }
+          //this.emit('close');
+        };
+        /**
+         * Flags used to render terminal text properly
+         */
+        Terminal.flags = {
+          BOLD: 1,
+          UNDERLINE: 2,
+          BLINK: 4,
+          INVERSE: 8,
+          INVISIBLE: 16
+        };
+        /**
+         * Refreshes (re-renders) terminal content within two rows (inclusive)
+         *
+         * Rendering Engine:
+         *
+         * In the screen buffer, each character is stored as a an array with a character
+         * and a 32-bit integer:
+         *   - First value: a utf-16 character.
+         *   - Second value:
+         *   - Next 9 bits: background color (0-511).
+         *   - Next 9 bits: foreground color (0-511).
+         *   - Next 14 bits: a mask for misc. flags:
+         *     - 1=bold
+         *     - 2=underline
+         *     - 4=blink
+         *     - 8=inverse
+         *     - 16=invisible
+         *
+         * @param {number} start The row to start from (between 0 and terminal's height terminal - 1)
+         * @param {number} end The row to end at (between fromRow and terminal's height terminal - 1)
+         * @param {boolean} queue Whether the refresh should ran right now or be queued
+         */
+        Terminal.prototype.refresh = function(start, end, queue) {
+          var self = this;
+          // queue defaults to true
+          queue = (typeof queue == 'undefined') ? true : queue;
+          /**
+           * The refresh queue allows refresh to execute only approximately 30 times a second. For
+           * commands that pass a significant amount of output to the write function, this prevents the
+           * terminal from maxing out the CPU and making the UI unresponsive. While commands can still
+           * run beyond what they do on the terminal, it is far better with a debounce in place as
+           * every single terminal manipulation does not need to be constructed in the DOM.
+           *
+           * A side-effect of this is that it makes ^C to interrupt a process seem more responsive.
+           */
+          if (queue) {
+            // If refresh should be queued, order the refresh and return.
+            if (this._refreshIsQueued) {
+              // If a refresh has already been queued, just order a full refresh next
+              this._fullRefreshNext = true;
+            } else {
+              setTimeout(function() {
+                self.refresh(start, end, false);
+              }, 34);
+              this._refreshIsQueued = true;
+            }
+            return;
+          }
+          // If refresh should be run right now (not be queued), release the lock
+          this._refreshIsQueued = false;
+          // If multiple refreshes were requested, make a full refresh.
+          if (this._fullRefreshNext) {
+            start = 0;
+            end = this.rows - 1;
+            this._fullRefreshNext = false; // reset lock
+          }
+          var x, y, i, line, out, ch, ch_width, width, data, attr, bg, fg, flags, row, parent, focused = document.activeElement;
+          // If this is a big refresh, remove the terminal rows from the DOM for faster calculations
+          if (end - start >= this.rows / 2) {
+            parent = this.element.parentNode;
+            if (parent) {
+              this.element.removeChild(this.rowContainer);
+            }
+          }
+          width = this.cols;
+          y = start;
+          if (end >= this.rows.length) {
+            this.log('`end` is too large. Most likely a bad CSR.');
+            end = this.rows.length - 1;
+          }
+          for (; y <= end; y++) {
+            row = y + this.ydisp;
+            line = this.lines[row];
+            out = '';
+            if (this.y === y - (this.ybase - this.ydisp) &&
+              this.cursorState &&
+              !this.cursorHidden) {
+              x = this.x;
+            } else {
+   this.writable = false;
+          this._events = {};
+          this.handler = function() {};
+          this.write = function() {};
+          if (this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
+          }
+          //this.emit('close');
+        };
+        /**
+         * Flags used to render terminal text properly
+         */
+        Terminal.flags = {
+          BOLD: 1,
+          UNDERLINE: 2,
+          BLINK: 4,
+          INVERSE: 8,
+          INVISIBLE: 16
+        };
+        /**
+         * Refreshes (re-renders) terminal content within two rows (inclusive)
+         *
+         * Rendering Engine:
+         *
+         * In the screen buffer, each character is stored as a an array with a character
+         * and a 32-bit integer:
+         *   - First value: a utf-16 character.
+         *   - Second value:
+         *   - Next 9 bits: background color (0-511).
+         *   - Next 9 bits: foreground color (0-511).
+         *   - Next 14 bits: a mask for misc. flags:
+         *     - 1=bold
+         *     - 2=underline
+         *     - 4=blink
+         *     - 8=inverse
+         *     - 16=invisible
+         *
+         * @param {number} start The row to start from (between 0 and terminal's height terminal - 1)
+         * @param {number} end The row to end at (between fromRow and terminal's height terminal - 1)
+         * @param {boolean} queue Whether the refresh should ran right now or be queued
+         */
+        Terminal.prototype.refresh = function(start, end, queue) {
+          var self = this;
+          // queue defaults to true
+          queue = (typeof queue == 'undefined') ? true : queue;
+          /**
+           * The refresh queue allows refresh to execute only approximately 30 times a second. For
+           * commands that pass a significant amount of output to the write function, this prevents the
+           * terminal from maxing out the CPU and making the UI unresponsive. While commands can still
+           * run beyond what they do on the terminal, it is far better with a debounce in place as
+           * every single terminal manipulation does not need to be constructed in the DOM.
+           *
+           * A side-effect of this is that it makes ^C to interrupt a process seem more responsive.
+           */
+          if (queue) {
+            // If refresh should be queued, order the refresh and return.
+            if (this._refreshIsQueued) {
+              // If a refresh has already been queued, just order a full refresh next
+              this._fullRefreshNext = true;
+            } else {
+              setTimeout(function() {
+                self.refresh(start, end, false);
+              }, 34);
+              this._refreshIsQueued = true;
+            }
+            return;
+          }
+          // If refresh should be run right now (not be queued), release the lock
+          this._refreshIsQueued = false;
+          // If multiple refreshes were requested, make a full refresh.
+          if (this._fullRefreshNext) {
+            start = 0;
+            end = this.rows - 1;
+            this._fullRefreshNext = false; // reset lock
+          }
+          var x, y, i, line, out, ch, ch_width, width, data, attr, bg, fg, flags, row, parent, focused = document.activeElement;
+          // If this is a big refresh, remove the terminal rows from the DOM for faster calculations
+          if (end - start >= this.rows / 2) {
+            parent = this.element.parentNode;
+            if (parent) {
+              this.element.removeChild(this.rowContainer);
+            }
+          }
+          width = this.cols;
+          y = start;
+          if (end >= this.rows.length) {
+            this.log('`end` is too large. Most likely a bad CSR.');
+            end = this.rows.length - 1;
+          }
+          for (; y <= end; y++) {
+            row = y + this.ydisp;
+            line = this.lines[row];
+            out = '';
+            if (this.y === y - (this.ybase - this.ydisp) &&
+              this.cursorState &&
+              !this.cursorHidden) {
+              x = this.x;
+            } else {
