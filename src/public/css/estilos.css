@@ -681,3 +681,15 @@ textarea:focus:-ms-input-placeholder {
     display: flex;
 }
 
+/*--------Terminal---------*/
+.container-t{
+    height: 50vh;
+    width: 100vw;
+    display: flex;
+}
+#terminal-container{
+    margin: 50px auto;
+    width: 700px;
+    height: 400px;
+    display: flex;
+}

@@ -1,5 +1,5 @@
 //--------Socket
-const socket = io();
+const socket = io('/router1');
 
 //--------TimeOut
 let horaFin = document.getElementById('horaFin').value;

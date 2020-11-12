@@ -12,8 +12,23 @@
     <title>Página Principal</title>
 </head>
 <body>
-    <h1>ROUTER 1</h1>
-    <div id="terminal-container"></div>
+    <main>
+        <div class="topbar">
+            <div class="topbar-lugar">
+                <a href="/inicio"><img src="/img/icono.png" alt=""></a>
+            </div>
+            <div class="topbar-perfil">
+                <ul>
+                    <li class="topbar-divisor item"></li>
+                    <li class="topbar-p item"><a href="/cerrarSesion">Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="container-t">
+            <div id="terminal-container"></div>
+        </div>
+        
+    </main>
     <script  src="/socket.io/socket.io.js"></script>
     <script type="text/javascript" src="/js/terminal.js"></script>
 </body>

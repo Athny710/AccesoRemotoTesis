@@ -36,11 +36,15 @@
  */
 
 .terminal {
-    background-color: rgb(225, 240, 14);
-    color: #fff;
+    background-color: transparent;
+    color: #ffffff;
+    text-shadow: 0 -1px 2px rgba(177,228,220,.5);
     font-family: courier-new, courier, monospace;
     font-feature-settings: "liga" 0;
-    position: relative;
+    position: absolute;
+    width: 700px;
+    height: 400px;
+    
 }
 
 .terminal.focus,
@@ -88,7 +92,7 @@
 
 .terminal.focus:not(.xterm-cursor-style-underline):not(.xterm-cursor-style-bar) .terminal-cursor {
     background-color: #fff;
-    color: rgb(226, 230, 14)255, 21, 21);
+    color: #000000
 }
 
 .terminal:not(.focus) .terminal-cursor {
@@ -149,8 +153,9 @@
 
 .terminal .xterm-viewport {
     /* On OS X this is required in order for the scroll bar to appear fully opaque */
-    background-color: #000;
+    background-color: rgba(0, 0, 0, .8);
     overflow-y: scroll;
+    box-shadow: 0 0 10px rgba(0, 0, 12, 0.6);
 }
 
 .terminal .xterm-wide-char {
