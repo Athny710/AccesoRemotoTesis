@@ -5319,7 +5319,6 @@
     });
     socketR1.on('data', (data) => {
       console.log('data from r1: '+data);
-      data = data + '\n';
       term.write(data);
     });
 
