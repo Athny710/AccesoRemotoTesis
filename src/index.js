@@ -36,16 +36,13 @@ var r1Web = io.of('/router1');
 r1Web.on('connection', (socket) => {
     console.log('A new user connected to router1 Web');
     socket.on('data', (data) => { 
-       console.log('data from term: '+ data);
        r1Server.emit('data', data);
     });
 });
 r1Server.on('data', (data) => {
-    console.log('data from r1: '+data);
     r1Web.emit('data', data);
 });
 r1Server.on('prompt', (prompt) => {
-    console.log('prompt from r1: '+prompt);
     r1Web.emit('prompt', prompt);
 });
 

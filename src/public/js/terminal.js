@@ -5302,10 +5302,9 @@
   
   const socketR1 = io('/router1');
 
-  var shellprompt ='hola';
-  
+  var shellprompt ='';
     term.prompt = function () {
-      term.write('\n'+shellprompt);
+      term.write('\r\n'+shellprompt);
     };
 
     socketR1.on('connect', function(){
@@ -5315,10 +5314,9 @@
     socketR1.on('prompt', (prompt) => {
       shellprompt = prompt;
       term.prompt();
-      
     });
     socketR1.on('data', (data) => {
-      console.log('data from r1: '+data);
+      data = data.replace(/\r(?!\n)/g, '');
       term.write(data);
     });
 
@@ -5331,20 +5329,17 @@
       if (ev.keyCode == 13) {
         if(curr_line.length === 0){
 	  socketR1.emit('data', curr_line);
-          console.log('no data, just ENTER');
         }else{
 	  socketR1.emit('data', curr_line);
           socketR1.emit('data', '\r');
-          console.log('Data emited: '+curr_line);
         };
-        //term.prompt();
         curr_line = '';
       } else if (ev.keyCode == 8) {
        // Do not delete the prompt
-        if (term.x > 8) { 
+        if (term.x > shellprompt.length) { 
           curr_line = curr_line.slice(0,-1); 
-          term.write('\b \b \b \b \b \b \b \b');
-        }
+          term.write('\b \b');
+        };
       } else if (printable) {
         curr_line += ev.key;
         term.write(key);
@@ -5352,5 +5347,5 @@
     });
   
     term.on('paste', function (data, ev) {
-      term.write(data);
+	term.write(data);
     });
